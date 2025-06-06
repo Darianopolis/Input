@@ -1,0 +1,10 @@
+# Build artifacts
+
+.vscode
+.cache
+build
+compile_commands.json
+
+# Runtime files
+
+imgui.ini
