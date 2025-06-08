@@ -23,7 +23,8 @@ namespace input
 
     public:
         void grab(bool state = true);
-        void hide();
+
+        UDevHidNode* get_udev_node();
 
         libevdev* get_device();
         const char* get_devnode();

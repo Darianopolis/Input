@@ -61,11 +61,16 @@ target_link_libraries(libevdev INTERFACE evdev)
 add_executable(input)
 set_default_compile_options(input)
 target_sources(input PUBLIC
-    src/main.cpp
-    src/fd_event_bus.cpp
-    src/udev_subsystem.cpp
-    src/evdev_subsystem.cpp
+    src/example/example-joystick.cpp
+    src/example/example-mouse.cpp
+    src/example/example-udev-watch.cpp
+    src/example/example.cpp
+
+    src/input/fd_event_bus.cpp
+    src/input/udev_subsystem.cpp
+    src/input/evdev_subsystem.cpp
     )
+target_include_directories(input PUBLIC src)
 target_link_libraries(input PUBLIC stdc++exp)
 target_link_libraries(input PUBLIC libevdev udev)
 target_link_libraries(input PUBLIC Backward::Object)

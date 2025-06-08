@@ -1,20 +1,19 @@
 #include "evdev_subsystem.hpp"
 
 #include <memory>
+#include <thread>
 
 #include <libevdev/libevdev.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#define NOISY_EVDEV_EVENTS 0
-
 namespace input
 {
     struct EvDevSubsystem::Impl : EvDevSubsystem
     {
         FdEventBus* event_bus;
-        std::vector<std::unique_ptr<EvInputDevice>> devices;
+        std::vector<std::unique_ptr<EvInputDevice::Impl>> devices;
         std::vector<EvDevDeviceFilter> device_filters;
     };
 
@@ -22,6 +21,7 @@ namespace input
     {
         std::string devnode;
         libevdev* device = nullptr;
+        UDevHidNode* node = nullptr;
         int fd = -1;
 
         bool needs_sync = false;
@@ -30,6 +30,7 @@ namespace input
 
         ~Impl()
         {
+            log_trace("Freeing libevdev device (device = {}, fd = {})", (void*)device, fd);
             if (device) libevdev_free(device);
             close(fd);
         }
@@ -37,25 +38,19 @@ namespace input
 
     void EvInputDevice::grab(bool state)
     {
-        unix_check_ne(libevdev_grab(get_impl(this)->device, state ? LIBEVDEV_GRAB : LIBEVDEV_UNGRAB));
-    }
-
-
-    void EvInputDevice::hide()
-    {
         decl_self(this);
 
-        log_debug("Hiding device [{}]", self->devnode);
-
-        unix_check_n1(chmod(self->devnode.c_str(), 0));
+        unix_check_ne(libevdev_grab(self->device, state ? LIBEVDEV_GRAB : LIBEVDEV_UNGRAB));
     }
+
+    UDevHidNode* EvInputDevice::get_udev_node() { return get_impl(this)->node; }
 
     libevdev*   EvInputDevice::get_device()   { return get_impl(this)->device;          }
     const char* EvInputDevice::get_devnode()  { return get_impl(this)->devnode.c_str(); }
 
-    const char* EvInputDevice::get_name()     { return libevdev_get_name(      get_impl(this)->device);                       }
-    int         EvInputDevice::get_vid()      { return libevdev_get_id_vendor( get_impl(this)->device);                       }
-    int         EvInputDevice::get_pid()      { return libevdev_get_id_product(get_impl(this)->device);                       }
+    const char* EvInputDevice::get_name()     { return libevdev_get_name(      get_impl(this)->device); }
+    int         EvInputDevice::get_vid()      { return libevdev_get_id_vendor( get_impl(this)->device); }
+    int         EvInputDevice::get_pid()      { return libevdev_get_id_product(get_impl(this)->device); }
 
     bool        EvInputDevice::has_gamepad()  { return libevdev_has_event_code(get_impl(this)->device, EV_KEY, BTN_GAMEPAD);  }
     bool        EvInputDevice::has_joystick() { return libevdev_has_event_code(get_impl(this)->device, EV_KEY, BTN_JOYSTICK); }
@@ -134,9 +129,12 @@ namespace input
                     log_debug("Erased device");
                     return;
                 }
-#if NOISY_EVDEV_EVENTS
+#define NOISY_EVDEV_EVENTS 0
+#if     NOISY_EVDEV_EVENTS
                 else {
-                    log_trace("Event ({}) = {}", libevdev_event_code_get_name(ev.type, ev.code), ev.value);
+                    if (ev.type != EV_REL && ev.type != EV_SYN) {
+                        log_trace("Event ({}) = {}", libevdev_event_code_get_name(ev.type, ev.code), ev.value);
+                    }
                 }
 #endif
 
@@ -148,13 +146,30 @@ namespace input
 
         void handle_udev_event(EvDevSubsystem::Impl* self, const UDeviceEvent& event)
         {
-            if ("input"sv != udev_device_get_subsystem(event.device)) return;
+            if (!event.node) return;
+            if (event.action == UDevAction::RemoveNode) {
+                for (auto iter = self->devices.begin(); iter != self->devices.end(); ++iter) {
+                    auto& evdev = *iter;
+                    if (evdev->node == event.node) {
+                        log_warn("EVDEV DEVICE FORCEFULLY REMOVED VIA UDEV EVENT");
+                        for (auto& cb : evdev->event_callbacks) {
+                            cb(evdev.get(), EvDevInputDeviceEventType::DeviceRemoved, {});
+                        }
+                        evdev.reset();
+                        self->devices.erase(iter);
+                        break;
+                    }
+                }
+                return;
+            }
+            if ("input"sv != udev_device_get_subsystem(event.node->dev)) return;
 
-            auto devnode = udev_device_get_devnode(event.device);
+            auto devnode = udev_device_get_devnode(event.node->dev);
             if (!devnode) return;
 
             auto evdev = std::make_unique<EvInputDevice::Impl>();
             evdev->devnode = devnode;
+            evdev->node = event.node;
 
             evdev->fd = open(devnode, O_RDONLY | O_NONBLOCK);
             if (evdev->fd == -1) return;
@@ -173,7 +188,7 @@ namespace input
             if (!(has_mouse || has_keyboard || has_gamepad || has_joystick || has_cctrl)) return;
 
 #define DUMP_EVDEV_INFO 1
-#define DUMP_EVDEV_CODES 1
+#define DUMP_EVDEV_CODES 0
 
 #if  DUMP_EVDEV_INFO
 
@@ -211,7 +226,7 @@ namespace input
 
             count_codes(EV_ABS, ABS_X, ABS_MAX);
             count_codes(EV_REL, REL_X, REL_MAX);
-            // count_codes(EV_KEY, KEY_RESERVED, KEY_MAX);
+            count_codes(EV_KEY, KEY_RESERVED, KEY_MAX);
 #endif
 
             bool add_device = false;
@@ -220,7 +235,7 @@ namespace input
             }
 
             if (add_device) {
-                log_debug("Listening to device [{}]", evdev->get_name());
+                log_debug("Listening to device [{}] (fd = {})", evdev->get_name(), evdev->fd);
                 self->event_bus->register_fd_listener(evdev->fd, EPOLLIN, [self, evdev = evdev.get()](FdEventData data) {
                     handle_evdev_input_event(self, evdev);
                 });

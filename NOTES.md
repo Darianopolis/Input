@@ -41,3 +41,10 @@ Updating rules
 # udevadm control --reload-rules
 # udevadm trigger
 ```
+
+# SDL Notes
+
+```
+SDL/src/hidapi/udev/69-hid.rules    - uaccess rules example
+SDL/src/hidapi/linux/hid.c          - udev handling
+```

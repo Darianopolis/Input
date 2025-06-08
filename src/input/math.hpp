@@ -12,15 +12,19 @@ namespace input
         constexpr vec2(double x, double y): x(x), y(y) {}
         constexpr vec2(double v): x(v), y(v) {}
 
-        friend constexpr auto operator+(vec2 l, vec2 r) -> vec2 { return vec2{ l.x + r.x, l.y + r.y }; }
-        friend constexpr auto operator-(vec2 l, vec2 r) -> vec2 { return vec2{ l.x - r.x, l.y - r.y }; }
-        friend constexpr auto operator*(vec2 l, vec2 r) -> vec2 { return vec2{ l.x * r.x, l.y * r.y }; };
-        friend constexpr auto operator*(vec2 v, double s) -> vec2 { return vec2{ v.x * s, v.y * s }; };
+        friend constexpr auto operator+(vec2 l, vec2 r) -> vec2   { return vec2{ l.x + r.x, l.y + r.y }; }
+        friend constexpr auto operator-(vec2 l, vec2 r) -> vec2   { return vec2{ l.x - r.x, l.y - r.y }; }
+        friend constexpr auto operator*(vec2 l, vec2 r) -> vec2   { return vec2{ l.x * r.x, l.y * r.y }; };
+        friend constexpr auto operator*(vec2 v, double s) -> vec2 { return vec2{ v.x * s,   v.y * s   }; };
+        friend constexpr auto operator/(vec2 l, vec2 r) -> vec2   { return vec2{ l.x / r.x, l.y / r.y }; };
+        friend constexpr auto operator/(vec2 v, double s) -> vec2 { return vec2{ v.x / s,   v.y / s   }; };
 
-        constexpr auto operator+=(vec2 r) -> decltype(auto) { return *this = *this + r; }
-        constexpr auto operator-=(vec2 r) -> decltype(auto) { return *this = *this - r; }
-        constexpr auto operator*=(vec2 r) -> decltype(auto) { return *this = *this * r; };
+        constexpr auto operator+=(vec2 r)   -> decltype(auto) { return *this = *this + r; }
+        constexpr auto operator-=(vec2 r)   -> decltype(auto) { return *this = *this - r; }
+        constexpr auto operator*=(vec2 r)   -> decltype(auto) { return *this = *this * r; };
         constexpr auto operator*=(double s) -> decltype(auto) { return *this = *this * s; };
+        constexpr auto operator/=(vec2 r)   -> decltype(auto) { return *this = *this / r; };
+        constexpr auto operator/=(double s) -> decltype(auto) { return *this = *this / s; };
 
         friend constexpr bool operator==(const vec2&, const vec2&) = default;
 
