@@ -25,6 +25,7 @@ namespace input::example
 
         init_joystick(argc, argv);
         init_mouse(argc, argv);
+        init_keyboard(argc, argv);
 
         udev_subsystem->start(event_bus);
         event_bus->run();

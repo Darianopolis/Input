@@ -63,6 +63,7 @@ set_default_compile_options(input)
 target_sources(input PUBLIC
     src/example/example-joystick.cpp
     src/example/example-mouse.cpp
+    src/example/example-keyboard.cpp
     src/example/example-udev-watch.cpp
     src/example/example.cpp
 

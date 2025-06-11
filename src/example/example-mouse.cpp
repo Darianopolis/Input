@@ -37,6 +37,9 @@ namespace input::example
             }
         }
 
+        libevdev_enable_event_code(mouse_out, EV_KEY, KEY_LEFTCTRL, nullptr);
+        libevdev_enable_event_code(mouse_out, EV_KEY, KEY_F22, nullptr);
+
         unix_check_ne(libevdev_uinput_create_from_device(mouse_out, LIBEVDEV_UINPUT_OPEN_MANAGED, &mouse_out_uinput));
     }
 
@@ -150,7 +153,15 @@ namespace input::example
 
             unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, EV_SYN, SYN_REPORT, 0));
         } else {
-            unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, ev.code, ev.value));
+            if (ev.type == EV_KEY && ev.code == BTN_EXTRA) {
+                log_trace("Mouse, mapping (BTN_EXTRA -> KEY_LEFTCTRL) = {}", ev.value);
+                unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, KEY_LEFTCTRL, ev.value));
+            } else if (ev.type == EV_KEY && ev.code == BTN_SIDE) {
+                log_trace("Mouse, mapping (BTN_SIDE -> KEY_F22) = {}", ev.value);
+                unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, KEY_F22, ev.value));
+            } else if (ev.type != EV_MSC || ev.type != MSC_SCAN) {
+                unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, ev.code, ev.value));
+            }
         }
     }
 
@@ -161,7 +172,7 @@ namespace input::example
 
             auto name = device->get_name();
             log_info("Mouse: {}", name);
-            if (argc >= 2 && std::string_view(argv[1]) == name) {
+            if ("Glorious Model O"sv == name) {
                 mouse_in = device;
                 log_info("  Selected!");
                 create_virtual_mouse();

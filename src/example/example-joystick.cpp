@@ -111,10 +111,31 @@ namespace input::example
     static
     auto radial_to_throttle_brake(vec2 pos, double* throttle, double* brake, double* handbrake)
     {
+#if 1
         auto r = mag(pos);
         *throttle  = (pos.x > 0 && pos.y > 0) ? r : 0.0;
         *brake     =  pos.x < 0               ? r : 0.0;
         *handbrake = (pos.x > 0 && pos.y < 0) ? r : 0.0;
+#else
+        auto r = mag(pos);
+        auto q = std::atan2(pos.x, pos.y);
+
+        double throttle_mix = 0.0;
+        double brake_mix = 0.0;
+        double handbrake_mix = 0.0;
+
+        static constexpr auto pi = std::numbers::pi;
+        static constexpr auto half_pi = std::numbers::pi / 2.0;
+        static constexpr auto quarter_pi = std::numbers::pi / 4.0;
+
+        brake_mix = 1.0 - maprange(q, -quarter_pi, 0, 0, 1, true);
+        if (q < half_pi) throttle_mix = maprange(q, -half_pi, -quarter_pi, 0.0, 1.0, true);
+        else handbrake_mix = 1.0;
+
+        *throttle = throttle_mix * r;
+        *brake = brake_mix * r;
+        *handbrake = handbrake_mix * r;
+#endif
     };
 
     void init_joystick(int argc, char* argv[])
@@ -172,6 +193,7 @@ namespace input::example
                 double throttle, brake, handbrake;
                 radial_to_throttle_brake(deadzone_radial(vec2(values[0], -values[1]), 0.13, 0), &throttle, &brake, &handbrake);
                 if (key[7]) handbrake = 1.0;
+                brake = std::min(1.0, brake + maprange(values[4], -1, 1, 0, 1));
 
                 auto a = key[3];
                 auto y = key[6];

@@ -13,4 +13,5 @@ namespace input::example
     void init_udev_watch(int argc, char* argv[]);
     void init_joystick(int argc, char* argv[]);
     void init_mouse(int argc, char* argv[]);
+    void init_keyboard(int argc, char* argv[]);
 }

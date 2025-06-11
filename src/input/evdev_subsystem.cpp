@@ -261,22 +261,16 @@ namespace input
 
     void EvDevSubsystem::destroy(EvDevSubsystem* _self)
     {
-        decl_self(_self);
-
-        delete self;
+        delete get_impl(_self);
     }
 
     void EvDevSubsystem::register_device_filter(EvDevDeviceFilter&& callback)
     {
-        decl_self(this);
-
-        self->device_filters.emplace_back(std::move(callback));
+        get_impl(this)->device_filters.emplace_back(std::move(callback));
     }
 
     void EvDevSubsystem::register_input_device_event_callback(EvInputDevice* device, EvDevInputDeviceEventCallback&& callback)
     {
-        decl_self(this);
-
         get_impl(device)->event_callbacks.emplace_back(std::move(callback));
     }
 }
