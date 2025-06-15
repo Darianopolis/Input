@@ -22,7 +22,8 @@ namespace input
         struct Impl;
 
     public:
-        void grab(bool state = true);
+        void grab(bool force = false);
+        void ungrab();
 
         UDevHidNode* get_udev_node();
 

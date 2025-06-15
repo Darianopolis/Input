@@ -63,9 +63,12 @@ namespace input::example
         static bool alt_queued = false;
         static bool alt_down = false;
 
-        if (ev.type == EV_KEY && ev.code == KEY_S && libevdev_get_event_value(keyboard_in->get_device(), EV_KEY, KEY_LEFTALT) && ev.value > 0) {
+        auto special_modifier = KEY_F13;
+        auto special_modifier_output = KEY_LEFTALT;
+
+        if (ev.type == EV_KEY && ev.code == KEY_S && libevdev_get_event_value(keyboard_in->get_device(), EV_KEY, special_modifier) && ev.value > 0) {
             if (ev.value == 1) {
-                log_trace("Mapping (alt+S -> \"std::\")");
+                log_trace("Mapping (special_1+S -> \"std::\")");
 
                 type(KEY_S);
                 type(KEY_T);
@@ -77,9 +80,9 @@ namespace input::example
 
                 alt_queued = false;
             }
-        } else if (ev.type == EV_KEY && ev.code == KEY_W && libevdev_get_event_value(keyboard_in->get_device(), EV_KEY, KEY_LEFTALT) && ev.value > 0) {
+        } else if (ev.type == EV_KEY && ev.code == KEY_W && libevdev_get_event_value(keyboard_in->get_device(), EV_KEY, special_modifier) && ev.value > 0) {
             if (ev.value == 1) {
-                log_trace("Mapping (alt+W -> \"->\")");
+                log_trace("Mapping (special_1+W -> \"->\")");
 
                 type(KEY_MINUS);
                 press(KEY_LEFTSHIFT);
@@ -88,9 +91,9 @@ namespace input::example
 
                 alt_queued = false;
             }
-        } else if (ev.type == EV_KEY && ev.code == KEY_D && libevdev_get_event_value(keyboard_in->get_device(), EV_KEY, KEY_LEFTALT) && ev.value > 0) {
+        } else if (ev.type == EV_KEY && ev.code == KEY_D && libevdev_get_event_value(keyboard_in->get_device(), EV_KEY, special_modifier) && ev.value > 0) {
             if (ev.value == 1) {
-                log_trace("Mapping (alt+D -> \"::\")");
+                log_trace("Mapping (special_1+D -> \"::\")");
 
                 press(KEY_LEFTSHIFT);
                 type(KEY_SEMICOLON);
@@ -100,28 +103,18 @@ namespace input::example
                 alt_queued = false;
             }
         } else if (ev.type == EV_KEY) {
-            if (ev.code == KEY_LEFTALT) {
+            if (ev.code == special_modifier) {
                 if (ev.value) {
-                    if (!alt_queued) {
-                        log_trace("Queueing alt press");
-                        alt_queued = true;
-                    }
+                    alt_queued = true;
                 } else {
-                    if (alt_queued && !alt_down) {
-                        log_trace("Tapping alt on release");
-                        type(KEY_LEFTALT);
-                        alt_queued = false;
-                    } else {
-                        log_trace("Releasing alt");
-                        release(KEY_LEFTALT);
-                        alt_queued = false;
-                        alt_down = false;
-                    }
+                    release(special_modifier_output);
+                    alt_queued = false;
+                    alt_down = false;
                 }
             } else {
                 if (alt_queued && !alt_down && ev.value == 1) {
-                    log_trace("Deferred activation of alt");
-                    press(KEY_LEFTALT);
+                    log_trace("Mapping (special_1) -> alt");
+                    press(special_modifier_output);
                     alt_down = true;
                 }
                 unix_check_ne(libevdev_uinput_write_event(keyboard_uinput, ev.type, ev.code, ev.value));

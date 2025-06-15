@@ -26,6 +26,9 @@ namespace input
 
         bool needs_sync = false;
 
+        bool wants_grab = false;
+        bool grabbed = false;
+
         std::vector<EvDevInputDeviceEventCallback> event_callbacks;
 
         ~Impl()
@@ -36,11 +39,43 @@ namespace input
         }
     };
 
-    void EvInputDevice::grab(bool state)
+    void try_grab(EvInputDevice::Impl* self, bool force = false)
+    {
+        if (!force) {
+            for (int code = 0; code <= KEY_MAX; ++code) {
+                if (libevdev_get_event_value(self->device, EV_KEY, code)) {
+                    log_warn("Can't grab [{}], {} pressed", libevdev_get_name(self->device), libevdev_event_code_get_name(EV_KEY, code));
+                    return;
+                }
+            }
+        }
+
+        unix_check_ne(libevdev_grab(self->device, LIBEVDEV_GRAB));
+        self->grabbed = true;
+        self->wants_grab = false;
+
+        log_info("Successfully grabbed [{}]", libevdev_get_name(self->device));
+    }
+
+    void EvInputDevice::grab(bool force)
     {
         decl_self(this);
 
-        unix_check_ne(libevdev_grab(self->device, state ? LIBEVDEV_GRAB : LIBEVDEV_UNGRAB));
+        if (self->grabbed) return;
+
+        self->wants_grab = true;
+        try_grab(self, force);
+    }
+
+    void EvInputDevice::ungrab()
+    {
+        decl_self(this);
+
+        if (self->grabbed) {
+            self->grabbed = false;
+            unix_check_ne(libevdev_grab(self->device, LIBEVDEV_UNGRAB));
+        }
+        self->wants_grab = false;
     }
 
     UDevHidNode* EvInputDevice::get_udev_node() { return get_impl(this)->node; }
@@ -137,6 +172,10 @@ namespace input
                     }
                 }
 #endif
+
+                if (device->wants_grab && !ev.value /* we'lll only ever be able to successfully grab after a key release */) {
+                    try_grab(device);
+                }
 
                 for (auto& cb : device->event_callbacks) {
                     cb(device, EvDevInputDeviceEventType::InputEvent, ev);

@@ -157,8 +157,13 @@ namespace input::example
                 log_trace("Mouse, mapping (BTN_EXTRA -> KEY_LEFTCTRL) = {}", ev.value);
                 unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, KEY_LEFTCTRL, ev.value));
             } else if (ev.type == EV_KEY && ev.code == BTN_SIDE) {
-                log_trace("Mouse, mapping (BTN_SIDE -> KEY_F22) = {}", ev.value);
-                unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, KEY_F22, ev.value));
+                if (ev.value == 1) {
+                    log_trace("Mouse, mapping (BTN_SIDE -> KEY_F22) = {}", ev.value);
+                    unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, KEY_F22, 1));
+                    unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, EV_SYN, SYN_REPORT, ev.value));
+                    unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, KEY_F22, 0));
+                    unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, EV_SYN, SYN_REPORT, ev.value));
+                }
             } else if (ev.type != EV_MSC || ev.type != MSC_SCAN) {
                 unix_check_ne(libevdev_uinput_write_event(mouse_out_uinput, ev.type, ev.code, ev.value));
             }
